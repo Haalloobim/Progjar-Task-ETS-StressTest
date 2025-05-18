@@ -8,7 +8,7 @@ import multiprocessing
 from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
 
-server_address = ('127.0.0.1', 6666)  
+server_address = ('127.0.0.1', 13337)  
 
 def send_command(command_str):
     try:
