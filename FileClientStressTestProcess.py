@@ -188,7 +188,7 @@ def main():
     
     combinations = [
         (t, f, p, c)
-        for t in ["download"]
+        for t in ["download", "upload"]
         for f in ["1B.bin", "1KB.bin", "100KB.bin", "1MB.bin", "10MB.bin", "100MB.bin"]  
         for p in ["thread"]
         for c in [1]

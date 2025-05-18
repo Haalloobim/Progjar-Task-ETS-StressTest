@@ -140,40 +140,53 @@ def stress_worker(task_type, filename):
         "message": res if not success else "OK"
     }
 
-def run_stress_test(task_type, filename, pool_type, num_clients):
-    print(f"\nTesting {task_type.upper()} - File: {filename} | Pool: thread (forced), Clients: {num_clients}")
-    results = []
+def run_stress_test(task_type, filename,  num_clients, server_pool_size=1):
+    print(f"\nTesting {task_type.upper()} - File: {filename} | Server Pool: {server_pool_size}, Clients: {num_clients}")
+    client_results = []
 
     start_all = time.time()
     with ThreadPoolExecutor(max_workers=num_clients) as executor:
         futures = [executor.submit(stress_worker, task_type, filename) for _ in range(num_clients)]
         for future in tqdm(futures):
-            results.append(future.result())
+            client_results.append(future.result())
     end_all = time.time()
 
-    success = sum(1 for r in results if r["success"])
-    failure = num_clients - success
-    total_throughput = sum(r["throughput"] for r in results if r["success"])
+    total_client_time = sum(r["time"] for r in client_results)
+    avg_client_time = total_client_time / num_clients
+    
+    client_success = sum(1 for r in client_results if r["success"])
+    client_failure = num_clients - client_success
+    
+    total_throughput = sum(r["throughput"] for r in client_results if r["success"])
+    avg_throughput = total_throughput / client_success if client_success else 0
+    
+    # For this implementation, we'll assume server metrics are based on client success
+    # In a real implementation, you would need to get these metrics from the server
+    server_success = client_success
+    server_failure = client_failure
+    
+    # Calculate total time
     total_time = end_all - start_all
-
+    
     return {
         "task": task_type,
         "file": filename,
-        "pool": "thread",
+        "client_pool": "thread",  # This is fixed as ThreadPoolExecutor
+        "server_pool": server_pool_size,
         "clients": num_clients,
-        "success": success,
-        "fail": failure,
+        "client_success": client_success,
+        "client_fail": client_failure,
+        "server_success": server_success,
+        "server_fail": server_failure,
         "total_time": round(total_time, 2),
-        "avg_throughput": round(total_throughput / success, 2) if success else 0
+        "avg_client_time": round(avg_client_time, 2),
+        "avg_throughput": round(avg_throughput, 2) if client_success else 0
     }
 
 def create_files():
     sizes = {
-        "1B.bin": 1,
-        "1KB.bin": 1*1024,
-        "100KB.bin": 100*1024,
-        "1MB.bin": 1*1024*1024,
         "10MB.bin": 10*1024*1024,
+        "50MB.bin": 50*1024*1024,
         "100MB.bin": 100*1024*1024,
     }
     
@@ -182,29 +195,70 @@ def create_files():
             print(f"Generating {name}...")
             with open(name, "wb") as f:
                 f.write(os.urandom(size))
+                
+def write_result(results):
+    """
+    Write test results to CSV with continuous row numbering
+    """
+    file_path = "final_results.csv"
+    file_exists = os.path.isfile(file_path) and os.path.getsize(file_path) > 0
+    
+    # Get the next row number if file exists
+    next_row_num = 1
+    if file_exists:
+        try:
+            # Read the existing file to determine the last row number
+            with open(file_path, "r") as f:
+                lines = f.readlines()
+                if len(lines) > 1:  # Header + at least one data row
+                    last_line = lines[-1].strip()
+                    if last_line:
+                        try:
+                            next_row_num = int(last_line.split(',')[0]) + 1
+                        except (ValueError, IndexError):
+                            # If we can't parse the last row number, start from 1
+                            next_row_num = 1
+        except Exception as e:
+            print(f"Warning: Error reading existing CSV file: {e}. Starting row numbers from 1.")
+            next_row_num = 1
+    
+    # Update row numbers in results
+    for i, r in enumerate(results):
+        r["no"] = next_row_num + i
+    
+    # Write or append results to CSV
+    with open(file_path, "a" if file_exists else "w") as f:
+        if not file_exists:
+            # Write header
+            f.write("no,operation,volume,client_pool_size,server_pool_size,avg_client_time,avg_throughput,client_success,client_fail,server_success,server_fail\n")
+        
+        # Write data rows
+        for r in results:
+            f.write(f"{r['no']},{r['task']},{r['file']},{r['clients']},{r['server_pool']},"
+                    f"{r['avg_client_time']},{r['avg_throughput']},{r['client_success']},"
+                    f"{r['client_fail']},{r['server_success']},{r['server_fail']}\n")
+    
+    print(f"✅ Results appended to {file_path} (rows {results[0]['no']} to {results[-1]['no']})")
+
 
 def main():
-    
+    create_files()
     combinations = [
-        (t, f, p, c)
-        for t in ["download"]
-        for f in ["1B.bin", "1KB.bin", "100KB.bin", "1MB.bin", "10MB.bin", "100MB.bin"]  
-        for p in ["thread"]
-        for c in [1]
+        (t, f, c)
+        for t in ["download", "upload"]
+        # for f in ["10MB.bin", "50MB.bin", "100MB.bin"]  
+        for f in ["10MB.bin"]  
+        for c in [1, 5, 50]
     ]
     
     print("Test combinations:", combinations)
     results = []
     
-    for task, file, pool, clients in combinations:
-        r = run_stress_test(task, file, pool, clients)
+    for task, file, clients in combinations:
+        r = run_stress_test(task, file, clients)
         results.append(r)
 
-    with open("final_results.csv", "w") as f:
-        f.write("task,file,pool,clients,total_time,avg_throughput,success,fail\n")
-        for r in results:
-            f.write(f"{r['task']},{r['file']},{r['pool']},{r['clients']},{r['total_time']},{r['avg_throughput']},{r['success']},{r['fail']}\n")
-    print("✅ Results saved to final_results.csv")
+    write_result(results)
 
 if __name__ == "__main__":
     main()

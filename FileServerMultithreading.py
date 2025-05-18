@@ -64,8 +64,8 @@ class Server:
         self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         # Set buffer sizes for better performance
-        self.my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 2**20)  # 1MB receive buffer
-        self.my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2**20)  # 1MB send buffer
+        self.my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 2**20)  
+        self.my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2**20) 
         self.max_workers = max_workers
 
     def run(self):
@@ -87,6 +87,22 @@ class Server:
 
 
 def main():
+    ## add parameter for max_workers
+    
+    # Check if the script is run with a command line argument
+    if len(sys.argv) > 1:
+        try:
+            max_workers = int(sys.argv[1])
+            if max_workers <= 0:
+                raise ValueError("Number of workers must be positive.")
+        except ValueError as e:
+            print(f"Invalid argument: {e}. Using default value of 10.")
+            max_workers = 10
+    else:
+        max_workers = 10  # Default value
+        
+    
+    
     svr = Server(ipaddress='0.0.0.0', port=6666, max_workers=20)  # Increased max workers
     svr.run()
 
