@@ -23,11 +23,8 @@ def send_command(command_str):
                 if not chunk:
                     break
                 data_received += chunk
-                
                 if end_marker in data_received[-8:]:  
                     break
-            
-            
             response_str = data_received.decode()
             response_str = response_str.strip()
             
@@ -159,13 +156,8 @@ def run_stress_test(task_type, filename,  num_clients, server_pool_size=1):
     
     total_throughput = sum(r["throughput"] for r in client_results if r["success"])
     avg_throughput = total_throughput / client_success if client_success else 0
-    
-    # For this implementation, we'll assume server metrics are based on client success
-    # In a real implementation, you would need to get these metrics from the server
     server_success = client_success
     server_failure = client_failure
-    
-    # Calculate total time
     total_time = end_all - start_all
     
     return {
@@ -246,8 +238,7 @@ def main():
     combinations = [
         (t, f, c)
         for t in ["download", "upload"]
-        # for f in ["10MB.bin", "50MB.bin", "100MB.bin"]  
-        for f in ["10MB.bin"]  
+        for f in ["10MB.bin", "50MB.bin", "100MB.bin"]  
         for c in [1, 5, 50]
     ]
     

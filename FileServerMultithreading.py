@@ -17,35 +17,27 @@ def ProcessTheClient(connection, address):
     try:
         logging.info(f"Processing client {address}")
         while True:
-            chunk = connection.recv(2**20)  # Using larger buffer size
+            chunk = connection.recv(2**20) 
             if not chunk:
                 break
                 
             buffer += chunk
             
-            # Check if we have a complete message
             if b"\r\n\r\n" in buffer:
-                # Get the complete message
                 request = buffer.decode()
                 logging.info(f"Complete request received from {address} ({len(buffer)} bytes)")
                 
-                # Process the request
                 start_time = time.time()
                 processed = fp.proses_string(request.strip())
                 end_time = time.time()
-                
                 logging.info(f"Request processed in {end_time - start_time:.2f} seconds")
-                
-                # Send the response back
                 response = processed + "\r\n\r\n"
                 
-                # Send in chunks for large responses
                 response_bytes = response.encode()
                 total_bytes = len(response_bytes)
                 logging.info(f"Sending response ({total_bytes} bytes)")
                 
-                # Use a larger chunk size for sending
-                chunk_size = 2**16
+                chunk_size = 2**20
                 for i in range(0, total_bytes, chunk_size):
                     connection.sendall(response_bytes[i:i+chunk_size])
                 
@@ -59,7 +51,7 @@ def ProcessTheClient(connection, address):
         connection.close()
 
 class Server:
-    def __init__(self, ipaddress='0.0.0.0', port=6666, max_workers=10):
+    def __init__(self, ipaddress='0.0.0.0', port=13337, max_workers=10):
         self.ipinfo = (ipaddress, port)
         self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -87,9 +79,6 @@ class Server:
 
 
 def main():
-    ## add parameter for max_workers
-    
-    # Check if the script is run with a command line argument
     if len(sys.argv) > 1:
         try:
             max_workers = int(sys.argv[1])
@@ -103,7 +92,7 @@ def main():
         
     
     
-    svr = Server(ipaddress='0.0.0.0', port=6666, max_workers=20)  # Increased max workers
+    svr = Server(ipaddress='0.0.0.0', port=13337, max_workers=max_workers)  # Increased max workers
     svr.run()
 
 

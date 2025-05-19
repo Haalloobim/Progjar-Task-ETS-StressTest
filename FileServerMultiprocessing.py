@@ -79,8 +79,6 @@ class Server:
         try:
             while True:
                 connection, address = my_socket.accept()
-                logging.warning(f"Accepted connection from {address}")
-                
                 p = Process(target=self.handle_connection, args=(connection, address))
                 p.daemon = True
                 p.start()
